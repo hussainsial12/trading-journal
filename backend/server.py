@@ -127,4 +127,54 @@ class TradeStats(BaseModel):
     largest_win: float
     largest_loss: float
 
+# Helper functions
+def prepare_for_mongo(data):
+    """Convert datetime objects to ISO strings for MongoDB storage"""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if isinstance(value, datetime):
+                data[key] = value.isoformat()
+    return data
+
+def parse_from_mongo(item):
+    """Convert ISO strings back to datetime objects"""
+    if isinstance(item, dict):
+        for key, value in item.items():
+            if isinstance(value, str) and key in ['entry_time', 'exit_time', 'created_at', 'updated_at']:
+                try:
+                    item[key] = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                except:
+                    pass
+    return item
+
+def calculate_pnl(trade_data):
+    """Calculate P&L for a trade"""
+    if not trade_data.get('exit_price'):
+        return None
+    
+    entry_price = trade_data['entry_price']
+    exit_price = trade_data['exit_price']
+    quantity = trade_data['quantity']
+    direction = trade_data['direction']
+    
+    if direction == TradeDirection.LONG:
+        profit_loss = (exit_price - entry_price) * quantity
+    else:  # SHORT
+        profit_loss = (entry_price - exit_price) * quantity
+    
+    # For futures, typically each point is worth different amounts
+    # NQ (Nasdaq) = $20 per point, ES (S&P) = $50 per point
+    symbol = trade_data['symbol'].upper()
+    if symbol == 'NQ':
+        profit_loss *= 20  # $20 per point for Nasdaq futures
+    elif symbol == 'ES':
+        profit_loss *= 50  # $50 per point for S&P futures
+    
+    commission = trade_data.get('commission', 0) or 0
+    net_pnl = profit_loss - commission
+    
+    return {
+        'profit_loss': round(profit_loss, 2),
+        'net_pnl': round(net_pnl, 2)
+    }
 
