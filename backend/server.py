@@ -177,4 +177,34 @@ def calculate_pnl(trade_data):
         'profit_loss': round(profit_loss, 2),
         'net_pnl': round(net_pnl, 2)
     }
+# API Routes
+@api_router.get("/")
+async def root():
+    return {"message": "Trade Journal API"}
 
+@api_router.post("/trades", response_model=TradeJournal)
+async def create_trade(trade: TradeJournalCreate):
+    trade_dict = trade.dict()
+    trade_obj = TradeJournal(**trade_dict)
+    
+    # Prepare for MongoDB storage
+    trade_data = prepare_for_mongo(trade_obj.dict())
+    
+    await db.trades.insert_one(trade_data)
+    return trade_obj
+
+@api_router.get("/trades", response_model=List[TradeJournal])
+async def get_trades(limit: int = 100, status: Optional[TradeStatus] = None):
+    query = {}
+    if status:
+        query['status'] = status
+    
+    trades = await db.trades.find(query).sort("created_at", -1).limit(limit).to_list(limit)
+    return [TradeJournal(**parse_from_mongo(trade)) for trade in trades]
+
+@api_router.get("/trades/{trade_id}", response_model=TradeJournal)
+async def get_trade(trade_id: str):
+    trade = await db.trades.find_one({"id": trade_id})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    return TradeJournal(**parse_from_mongo(trade))
