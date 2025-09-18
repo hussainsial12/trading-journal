@@ -46,3 +46,48 @@ class MarketCondition(str, Enum):
     SIDEWAYS = "sideways"
     VOLATILE = "volatile"
     CALM = "calm"
+# Trade Models
+class TradeJournal(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    
+    # Basic Trade Info
+    symbol: str  # NQ (Nasdaq) or ES (S&P)
+    direction: TradeDirection
+    entry_price: float
+    exit_price: Optional[float] = None
+    quantity: int
+    entry_time: datetime
+    exit_time: Optional[datetime] = None
+    
+    # Financial Metrics
+    profit_loss: Optional[float] = None
+    commission: Optional[float] = None
+    net_pnl: Optional[float] = None
+    
+    # Strategy & Risk Management
+    strategy: str
+    stop_loss: Optional[float] = None
+    target_price: Optional[float] = None
+    risk_reward_ratio: Optional[float] = None
+    
+    # Psychology & Context
+    pre_trade_emotion: EmotionRating
+    post_trade_emotion: Optional[EmotionRating] = None
+    market_condition: MarketCondition
+    
+    # Trade Analysis
+    setup_description: str
+    what_worked: Optional[str] = None
+    what_could_improve: Optional[str] = None
+    lessons_learned: Optional[str] = None
+    
+    # Additional Data
+    chart_screenshot_url: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+    
+    # Status
+    status: TradeStatus = TradeStatus.OPEN
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
